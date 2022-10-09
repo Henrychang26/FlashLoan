@@ -6,7 +6,8 @@ const tokens = (n) => {
 }
 
 describe("FlashLoan", () => {
-    let token, flashLoan
+    let token, flashLoan, flashLoanReceiver
+    let deployer
 
     beforeEach(async () => {
         //Setup accounts
@@ -30,11 +31,26 @@ describe("FlashLoan", () => {
         //Deposit tokens into the pool
         let transaction = await flashLoan.connect(player).depositTokens(token(1000000))
         await transaction.wait()
+
+        //Deploy Flashloan receiver
+        flashLoanReceiver = await FlashLoanReceiver.deploy(flashLoan.address)
     })
 
     describe("Deployment", () => {
         it("Sends tokens to the flash loan pool contract", async () => {
             expect(await token.balanceOf(flashLoan.address)).to.equal(tokens(1000000))
+        })
+    })
+
+    describe("Borrowing funds", () => {
+        it("borrows funds from the pool", async () => {
+            let amount = tokens(100)
+            let transaction = await flashLoanReceiver.connect(player).executeFlashLoan(amount)
+            let result = await transaction.wait()
+
+            await expect(transaction)
+                .to.emit(flashLoanReceiver, "LoanReceived")
+                .withArgs(token.address, amount)
         })
     })
 })
